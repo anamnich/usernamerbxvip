@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Whitelist Roblox Manager</title>
+<style>
+/* === CSS sama seperti sebelumnya === */
+* { box-sizing: border-box; margin:0; padding:0; }
+body{
+    font-family:'Inter', sans-serif;
+    background: linear-gradient(135deg, #000000, #3b82f6);
+    display:flex; justify-content:center; align-items:flex-start;
+    min-height:100vh; padding:20px; overflow:hidden;
+}
+canvas#bgCanvas{position:absolute;top:0;left:0;width:100%;height:100%;z-index:0;}
+.card{position:absolute;top:50px;left:50%;transform:translateX(-50%);
+background:rgba(255,255,255,0.85);backdrop-filter:blur(10px);padding:20px;border-radius:16px;
+box-shadow:0 8px 24px rgba(0,0,0,0.1);width:90%;max-width:400px;max-height:80vh;overflow-y:auto;
+z-index:1;cursor:grab;}
+.card:active{cursor:grabbing;}
+h1{text-align:center;font-size:24px;font-weight:700;margin-bottom:20px;color:#111827;}
+.input-group{display:flex;flex-direction:column; gap:10px; margin-bottom:15px; position:relative; z-index:1;}
+input{padding:10px 12px;border-radius:8px;border:1px solid #d1d5db;font-size:16px;outline:none;transition:border 0.2s;}
+input:focus{border-color:#6366f1; box-shadow:0 0 0 2px rgba(99,102,241,0.2);}
+button{padding:10px 16px;border-radius:8px;border:none;background:#6366f1;color:#fff;
+cursor:pointer;font-weight:600;transition:background 0.2s, transform 0.1s; position:relative; z-index:1;}
+button:hover{background:#4f46e5;transform:translateY(-2px);}
+button:active{transform:translateY(0);}
+#status{padding:8px 12px;border-radius:10px;background:rgba(238,242,255,0.7);font-size:14px;color:#1f2937;margin-bottom:15px;text-align:center; position:relative; z-index:1;}
+#totalCount{font-size:14px;color:#374151;margin-bottom:10px;text-align:right; position:relative; z-index:1;}
+#search{margin-bottom:15px;padding:8px 12px;border-radius:8px;border:1px solid #d1d5db;width:100%; font-size:15px; position:relative; z-index:1;}
+ul{display:grid; grid-template-columns:1fr; gap:10px; list-style:none; padding:0; position:relative; z-index:1;}
+li{background:rgba(249,250,251,0.9); border-radius:12px; padding:10px; display:flex; flex-direction:column; align-items:center;
+box-shadow:0 4px 12px rgba(0,0,0,0.05); transition:transform 0.2s, box-shadow 0.2s;}
+li:hover{transform:translateY(-2px); box-shadow:0 6px 16px rgba(0,0,0,0.1);}
+.username-text{font-weight:600; margin-bottom:8px; text-align:center; color:#111827; word-break:break-word;}
+button.danger{background:#ef4444;padding:5px 8px;font-size:12px;border-radius:6px;width:100%;text-align:center;transition:background 0.2s;}
+button.danger:hover{background:#dc2626;}
+@media(max-width:500px){.input-group{flex-direction:column;}button{margin-left:0;margin-top:8px; width:100%;}}
+</style>
+</head>
+<body>
+
+<canvas id="bgCanvas"></canvas>
+
+<div class="card">
+  <h1>Whitelist Roblox Manager</h1>
+  <div class="input-group">
+    <input id="username" placeholder="Masukkan username Roblox">
+    <button id="addBtn">Tambah</button>
+  </div>
+  <input id="search" placeholder="Cari username..." type="text">
+  <div id="totalCount">Total: 0</div>
+  <div id="status">Memuat data whitelist...</div>
+  <ul id="list"></ul>
+</div>
+
+<script>
+// ====== Partikel background ======
+const canvas = document.getElementById('bgCanvas');
+const ctx = canvas.getContext('2d');
+let particles = [];
+let w = canvas.width = window.innerWidth;
+let h = canvas.height = window.innerHeight;
+
+window.addEventListener('resize', ()=>{
+    w = canvas.width = window.innerWidth;
+    h = canvas.height = window.innerHeight;
+});
+
+function random(min,max){return Math.random()*(max-min)+min;}
+
+class Particle{
+    constructor(){
+        this.x = random(0,w);
+        this.y = random(0,h);
+        this.size = random(2,4);
+        this.speedX = random(-0.4,0.4);
+        this.speedY = random(-0.4,0.4);
+    }
+    update(){
+        this.x += this.speedX;
+        this.y += this.speedY;
+        if(this.x<0) this.x=w;
+        if(this.x>w) this.x=0;
+        if(this.y<0) this.y=h;
+        if(this.y>h) this.y=0;
+    }
+    draw(){
+        ctx.fillStyle='rgba(255,255,255,0.5)';
+        ctx.beginPath();
+        ctx.arc(this.x,this.y,this.size,0,Math.PI*2);
+        ctx.fill();
+    }
+}
+
+for(let i=0;i<80;i++) particles.push(new Particle());
+function animate(){ctx.clearRect(0,0,w,h);particles.forEach(p=>{p.update();p.draw();});requestAnimationFrame(animate);}
+animate();
+
+// ====== Dragable card ======
+const card = document.querySelector('.card');
+let isDragging = false;
+let offsetX = 0;
+let offsetY = 0;
+
+card.addEventListener('mousedown', (e)=>{
+    isDragging = true;
+    offsetX = e.clientX - card.offsetLeft;
+    offsetY = e.clientY - card.offsetTop;
+});
+
+document.addEventListener('mousemove', (e)=>{
+    if(!isDragging) return;
+    card.style.left = (e.clientX - offsetX) + "px";
+    card.style.top = (e.clientY - offsetY) + "px";
+});
+
+document.addEventListener('mouseup', ()=>{ isDragging = false; });
+
+// ====== Whitelist Manager ======
+const EL = {
+  username: document.getElementById('username'),
+  addBtn: document.getElementById('addBtn'),
+  search: document.getElementById('search'),
+  status: document.getElementById('status'),
+  list: document.getElementById('list')
+};
+
+let whitelistData = [];
+
+function setStatus(text){ EL.status.textContent = text; }
+
+async function loadList(){
+  try{
+    // Ambil dari GitHub raw
+    const res = await fetch('https://raw.githubusercontent.com/USERNAME/REPO/BRANCH/whitelist.json');
+    whitelistData = await res.json();
+    renderList(whitelistData);
+    setStatus('Whitelist berhasil dimuat');
+  }catch(e){ 
+    setStatus('Gagal ambil whitelist'); 
+    console.error(e); 
+  }
+}
+
+function renderList(arr){
+  const filterText = EL.search.value.trim().toLowerCase();
+  EL.list.innerHTML='';
+  let filtered = arr;
+  if(filterText) filtered = arr.filter(u=>u.toLowerCase().includes(filterText));
+
+  document.getElementById('totalCount').textContent = `Total: ${filtered.length}`;
+
+  if(!filtered.length){ 
+      EL.list.innerHTML='<li>Kosong</li>'; 
+      return; 
+  }
+
+  filtered.forEach(u=>{
+    const li = document.createElement('li');
+    const usernameDiv = document.createElement('div');
+    usernameDiv.textContent = u;
+    usernameDiv.className = 'username-text';
+    li.appendChild(usernameDiv);
+
+    const btn = document.createElement('button');
+    btn.textContent='Hapus';
+    btn.className='danger';
+    btn.onclick = async ()=>{
+      if(!confirm(`Hapus username "${u}"?`)) return;
+      try{
+        const res = await fetch('add_user.php',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({username:u, action:'delete'})
+        });
+        const j = await res.json();
+        if(j.success){
+          setStatus(`Username "${u}" berhasil dihapus`);
+          loadList();
+        } else { setStatus(j.error||'Gagal hapus'); }
+      }catch(e){ console.error(e); setStatus('Error koneksi ke server'); }
+    };
+
+    li.appendChild(btn);
+    EL.list.appendChild(li);
+  });
+}
+
+// Tambah username
+EL.addBtn.onclick = async ()=>{
+  const username = EL.username.value.trim();
+  if(!username) return alert('Masukkan username dulu');
+
+  try{
+    setStatus('Mengirim ke server...');
+    const res = await fetch('add_user.php', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({username, action:'add'})
+    });
+    const j = await res.json();
+    if(j.success){
+      setStatus('Username berhasil ditambahkan');
+      EL.username.value='';
+      loadList();
+    } else { setStatus(j.error||'Gagal menambahkan'); }
+  }catch(e){ console.error(e); setStatus('Error koneksi ke server'); }
+}
+
+// Filter search
+EL.search.addEventListener('input', ()=>renderList(whitelistData));
+
+// Init
+loadList();
+</script>
+
+</body>
+</html>
