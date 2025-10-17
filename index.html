@@ -135,7 +135,7 @@ function setStatus(text){ EL.status.textContent = text; }
 async function loadList(){
   try{
     // Ambil dari GitHub raw
-    const res = await fetch('https://raw.githubusercontent.com/USERNAME/REPO/BRANCH/whitelist.json');
+    const res = await fetch('https://raw.githubusercontent.com/anamnich/usernamerbxvip/refs/heads/main/whitelist.json');
     whitelistData = await res.json();
     renderList(whitelistData);
     setStatus('Whitelist berhasil dimuat');
